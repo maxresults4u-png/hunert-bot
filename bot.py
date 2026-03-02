@@ -1,32 +1,58 @@
 import os
-from telegram.ext import Updater, CommandHandler
+import time
+import requests
+import jwt
+from flask import Flask, request, jsonify
 
-print("Hunter bot is starting...")
+app = Flask(__name__)
 
-# Get token from Railway Variables
-TOKEN = "8744376444:AAEsDqM3eYXBbhYGjDn28rlELWPGgt0W3HQ"
+API_KEY = os.getenv("9kf6TPvxHNeIFsmIVeyGNMSqddMK5pAW")
+API_SECRET = os.getenv("0b1cc6cf-785f-4e00-bf2a-d24df75f048c")
 
-print("TOKEN loaded successfully")
+BASE_URL = "https://api.coinbase.com/api/v3/brokerage"
+PRODUCT_ID = "SOL-USD"
+TRADE_SIZE_USD = 5  # TEST SIZE
 
-# Commands
-def start(update, context):
-    update.message.reply_text("Hunter bot is live 🚀")
+def generate_jwt():
+    payload = {
+        "iss": API_KEY,
+        "sub": API_KEY,
+        "nbf": int(time.time()),
+        "exp": int(time.time()) + 120,
+        "aud": ["https://api.coinbase.com"]
+    }
+    return jwt.encode(payload, API_SECRET, algorithm="HS256")
 
-def hello(update, context):
-    update.message.reply_text("Bot is running on Railway ✅")
+def place_market_buy():
+    url = f"{BASE_URL}/orders"
+    token = generate_jwt()
 
-# Start bot
-def main():
-    updater = Updater(token=TOKEN, use_context=True)
-    dp = updater.dispatcher
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
+    }
 
-    dp.add_handler(CommandHandler("start", start))
-    dp.add_handler(CommandHandler("hello", hello))
+    body = {
+        "client_order_id": str(int(time.time())),
+        "product_id": PRODUCT_ID,
+        "side": "BUY",
+        "order_configuration": {
+            "market_market_ioc": {
+                "quote_size": str(TRADE_SIZE_USD)
+            }
+        }
+    }
 
-    updater.start_polling()
-    updater.idle()
+    response = requests.post(url, headers=headers, json=body)
+    return response.json()
 
-if __name__ == "__main__":
-    main()
+@app.route("/", methods=["POST"])
+def webhook():
+    data = request.json
+    action = data.get("action")
 
+    if action == "LONG":
+        result = place_market_buy()
+        return jsonify(result)
 
+    return jsonify({"status": "no action"})
