@@ -60,4 +60,22 @@ def webhook():
 # Start Flask server
 # ---------------------------------
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    print("Hunter bot is running...")
+    
+    from telegram.ext import Updater, CommandHandler
+    
+    import os
+    
+    TOKEN = os.getenv("8744376444:AAEsDqM3eYXBbhYGjDn28rlELWPGgt0W3HQ")
+    
+    updater = Updater(TOKEN, use_context=True)
+    
+    dp = updater.dispatcher
+    
+    def start(update, context):
+        update.message.reply_text("Hunter bot is live 🚀")
+    
+    dp.add_handler(CommandHandler("start", start))
+    
+    updater.start_polling()
+    updater.idle()
