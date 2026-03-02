@@ -6,9 +6,6 @@ print("Hunter bot is starting...")
 # Get token from Railway Variables
 TOKEN = "8744376444:AAEsDqM3eYXBbhYGjDn28rlELWPGgt0W3HQ"
 
-if not TOKEN:
-    raise Exception("TELEGRAM_BOT_TOKEN is missing from Railway variables")
-
 print("TOKEN loaded successfully")
 
 # Commands
@@ -31,4 +28,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
