@@ -4,7 +4,7 @@ from telegram.ext import Updater, CommandHandler
 print("Hunter bot is starting...")
 
 # Get token from Railway Variables
-TOKEN = os.getenv("8744376444:AAEsDqM3eYXBbhYGjDn28rlELWPGgt0W3HQ")
+TOKEN = "8744376444:AAEsDqM3eYXBbhYGjDn28rlELWPGgt0W3HQ"
 
 if not TOKEN:
     raise Exception("TELEGRAM_BOT_TOKEN is missing from Railway variables")
@@ -31,3 +31,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
