@@ -6,8 +6,8 @@ from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
-API_KEY = os.getenv("9kf6TPvxHNeIFsmIVeyGNMSqddMK5pAW")
-API_SECRET = os.getenv("0b1cc6cf-785f-4e00-bf2a-d24df75f048c")
+API_KEY = os.getenv("COINBASE_API_KEY")
+API_SECRET = os.getenv("COINBASE_API_SECRET")
 
 BASE_URL = "https://api.coinbase.com/api/v3/brokerage"
 PRODUCT_ID = "SOL-USD"
@@ -56,8 +56,7 @@ def webhook():
         return jsonify(result)
 
     return jsonify({"status": "no action"})
-   if __name__ == "__main__":
-    import os
+
+if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port)
-
