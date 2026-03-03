@@ -89,7 +89,11 @@ def place_market_buy():
 
 @app.route("/", methods=["POST"])
 def webhook():
-    data = request.json
+    data = request.get_json(force=True)
+
+    if not data:
+        return jsonify({"error": "No JSON received"}), 400
+
     action = data.get("action")
 
     if action == "LONG":
@@ -98,10 +102,10 @@ def webhook():
 
     return jsonify({"status": "no action"})
 
-
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port)
+
 
 
 
