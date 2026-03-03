@@ -18,13 +18,13 @@ BASE_URL = "https://api.coinbase.com/api/v3/brokerage"
 PRODUCT_ID = "SOL-USD"
 TRADE_SIZE_USD = "5"  # SAFE TEST SIZE
 
+from cryptography.hazmat.primitives import serialization
 
 def load_private_key():
     decoded_key = base64.b64decode(PRIVATE_KEY_BASE64)
-    return ec.derive_private_key(
-        int.from_bytes(decoded_key, "big"),
-        ec.SECP256R1(),
-        default_backend()
+    return serialization.load_der_private_key(
+        decoded_key,
+        password=None
     )
 
 
@@ -95,3 +95,4 @@ def webhook():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port)
+
