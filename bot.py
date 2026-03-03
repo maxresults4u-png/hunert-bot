@@ -8,22 +8,22 @@ app = Flask(__name__)
 
 # CONFIGURATION FROM RAILWAY
 API_KEY_ID = os.getenv("COINBASE_API_KEY_ID")
-PRIVATE_KEY_RAW = os.getenv("COINBASE_PRIVATE_KEY") # The raw string starting with Wek...
+PRIVATE_KEY_RAW = os.getenv("COINBASE_PRIVATE_KEY") 
 
-BASE_URL = "https://api.api.coinbase.com"
+BASE_URL = "https://api.coinbase.com"
 PRODUCT_ID = "SOL-USD"
 TRADE_SIZE_USD = "5"
 
 def generate_jwt():
-    """Generates a Coinbase CDP JWT token with strict 2026 formatting."""
+    """Final Fix for Railway: Cleans literal backslashes and formats for Coinbase 2026."""
     if not PRIVATE_KEY_RAW:
         raise ValueError("COINBASE_PRIVATE_KEY is missing in Railway variables")
 
     # FIX: The "InvalidByte(0, 92)" error is caused by literal backslashes (\).
-    # This line converts literal "\n" text back into real line breaks.
-    clean_key = PRIVATE_KEY_RAW.replace("\\n", "\n").strip()
+    # This cleans the Railway variable by turning text "\n" back into real breaks.
+    clean_key = PRIVATE_KEY_RAW.replace("\\n", "\n").replace('"', '').strip()
     
-    # Ensure the key is wrapped in the PEM headers required by the 'cryptography' library
+    # Wrap in the mandatory PEM headers for the cryptography library
     if "-----BEGIN" not in clean_key:
         pem_key = f"-----BEGIN PRIVATE KEY-----\n{clean_key}\n-----END PRIVATE KEY-----"
     else:
@@ -76,7 +76,6 @@ def place_market_buy():
 
     response = requests.post(url, headers=headers, json=body)
     
-    # Return detailed response for debugging
     try:
         return {
             "status_code": response.status_code,
@@ -96,7 +95,7 @@ def webhook():
     if not data:
         return jsonify({"error": "No JSON received"}), 400
 
-    # TradingView Alert Message: {"action": "LONG"}
+    # TradingView Alert Message should be: {"action": "LONG"}
     action = data.get("action")
 
     if action == "LONG":
@@ -109,4 +108,3 @@ if __name__ == "__main__":
     # Railway dynamic port binding
     port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port)
-    
