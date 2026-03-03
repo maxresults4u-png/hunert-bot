@@ -10,24 +10,24 @@ app = Flask(__name__)
 API_KEY_ID = os.getenv("COINBASE_API_KEY_ID")
 PRIVATE_KEY_RAW = os.getenv("COINBASE_PRIVATE_KEY") 
 
+# FIXED URL FOR 2026 ADVANCED TRADE API
 BASE_URL = "https://api.coinbase.com"
 PRODUCT_ID = "SOL-USD"
 TRADE_SIZE_USD = "5"
 
 def generate_jwt():
-    """Final Fix for Railway: Cleans literal backslashes and formats for Coinbase 2026."""
+    """Final Fix for Railway: Specifically scrubs literal backslashes causing InvalidByte(0, 92)."""
     if not PRIVATE_KEY_RAW:
         raise ValueError("COINBASE_PRIVATE_KEY is missing in Railway variables")
 
-    # FIX: The "InvalidByte(0, 92)" error is caused by literal backslashes (\).
-    # This cleans the Railway variable by turning text "\n" back into real breaks.
-    clean_key = PRIVATE_KEY_RAW.replace("\\n", "\n").replace('"', '').strip()
+    # THE CRITICAL SCRUBBER:
+    # 1. Removes literal backslashes (\) added by Railway
+    # 2. Removes literal "n" characters left over from \n escaping
+    # 3. Removes any accidental quotes (")
+    clean_key = PRIVATE_KEY_RAW.replace("\\", "").replace("n", "").replace('"', '').strip()
     
-    # Wrap in the mandatory PEM headers for the cryptography library
-    if "-----BEGIN" not in clean_key:
-        pem_key = f"-----BEGIN PRIVATE KEY-----\n{clean_key}\n-----END PRIVATE KEY-----"
-    else:
-        pem_key = clean_key
+    # Wrap in mandatory PEM headers for the cryptography library to recognize the Base64 string
+    pem_key = f"-----BEGIN PRIVATE KEY-----\n{clean_key}\n-----END PRIVATE KEY-----"
 
     # 2026 Coinbase CDP Authentication Standards
     payload = {
@@ -89,15 +89,11 @@ def place_market_buy():
 
 @app.route("/", methods=["POST"])
 def webhook():
-    # force=True handles TradingView's default content-type
     data = request.get_json(force=True)
-
     if not data:
         return jsonify({"error": "No JSON received"}), 400
 
-    # TradingView Alert Message should be: {"action": "LONG"}
     action = data.get("action")
-
     if action == "LONG":
         result = place_market_buy()
         return jsonify(result)
@@ -105,6 +101,5 @@ def webhook():
     return jsonify({"status": "ignored", "action_received": action})
 
 if __name__ == "__main__":
-    # Railway dynamic port binding
     port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port)
