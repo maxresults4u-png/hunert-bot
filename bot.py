@@ -1,10 +1,10 @@
 import os
 import time
 import json
-import requests
 import hmac
 import hashlib
 import base64
+import requests
 from flask import Flask, request, jsonify
 
 app = Flask(__name__)
@@ -12,13 +12,13 @@ app = Flask(__name__)
 API_KEY_ID = os.getenv("COINBASE_API_KEY_ID")
 API_SECRET = os.getenv("COINBASE_API_SECRET")
 
-BASE_URL = "https://api.coinbase.com/api/v3/brokerage"
+BASE_URL = "https://api.coinbase.com"
 PRODUCT_ID = "SOL-USD"
 TRADE_SIZE_USD = "5"
 
 
-def sign_request(timestamp, method, path, body):
-    message = f"{timestamp}{method}{path}{body}"
+def sign_request(timestamp, method, request_path, body):
+    message = f"{timestamp}{method}{request_path}{body}"
     signature = hmac.new(
         API_SECRET.encode("utf-8"),
         message.encode("utf-8"),
@@ -29,8 +29,8 @@ def sign_request(timestamp, method, path, body):
 
 def place_market_buy():
     method = "POST"
-    path = "/orders"
-    url = BASE_URL + path
+    request_path = "/api/v3/brokerage/orders"
+    url = BASE_URL + request_path
 
     body = {
         "client_order_id": str(int(time.time())),
@@ -46,7 +46,7 @@ def place_market_buy():
     body_json = json.dumps(body)
     timestamp = str(int(time.time()))
 
-    signature = sign_request(timestamp, method, path, body_json)
+    signature = sign_request(timestamp, method, request_path, body_json)
 
     headers = {
         "CB-ACCESS-KEY": API_KEY_ID,
@@ -75,12 +75,10 @@ def webhook():
     if not data:
         return jsonify({"error": "NO_JSON"}), 400
 
-    action = data.get("action")
-    if action == "LONG":
-        result = place_market_buy()
-        return jsonify(result)
+    if data.get("action") == "LONG":
+        return jsonify(place_market_buy())
 
-    return jsonify({"status": "ignored", "action": action})
+    return jsonify({"status": "ignored"})
 
 
 if __name__ == "__main__":
