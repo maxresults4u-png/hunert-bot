@@ -1,5 +1,5 @@
 python-telegram-bot==13.15
 requests
 flask
-PyJWT
-cryptography
+PyJWT>=2.10.0
+cryptography>=42.0.0
