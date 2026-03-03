@@ -1,5 +1,6 @@
 import os
 import time
+import json
 import requests
 import hmac
 import hashlib
@@ -9,7 +10,7 @@ from flask import Flask, request, jsonify
 app = Flask(__name__)
 
 API_KEY_ID = os.getenv("COINBASE_API_KEY_ID")
-API_SECRET = os.getenv("COINBASE_API_SECRET")  # REST secret ONLY
+API_SECRET = os.getenv("COINBASE_API_SECRET")
 
 BASE_URL = "https://api.coinbase.com/api/v3/brokerage"
 PRODUCT_ID = "SOL-USD"
@@ -42,7 +43,7 @@ def place_market_buy():
         }
     }
 
-    body_json = json_body = requests.utils.json.dumps(body)
+    body_json = json.dumps(body)
     timestamp = str(int(time.time()))
 
     signature = sign_request(timestamp, method, path, body_json)
