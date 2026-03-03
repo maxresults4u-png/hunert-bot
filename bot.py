@@ -44,7 +44,9 @@ def place_market_buy():
     }
 
     response = requests.post(url, headers=headers, json=body)
-    return response.json()
+    print("Status Code:", response.status_code)
+print("Raw Response:", response.text)
+return {"status_code": response.status_code, "response": response.text}
 
 @app.route("/", methods=["POST"])
 def webhook():
@@ -60,3 +62,4 @@ def webhook():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port)
+
