@@ -26,7 +26,7 @@ def generate_jwt():
     pem_key = (
         "-----BEGIN PRIVATE KEY-----\n"
         f"{formatted_body}\n"
-        "-----END PRIVATE KEY-----"
+        "-----END PRIVATE KEY-----\n"
     )
 
     payload = {
@@ -39,7 +39,7 @@ def generate_jwt():
 
     token = jwt.encode(
         payload,
-        pem_key,
+        pem_key.encode("utf-8"),
         algorithm="ES256",
         headers={
             "kid": API_KEY_ID,
