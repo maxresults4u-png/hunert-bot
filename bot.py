@@ -1,11 +1,10 @@
 import os
 import time
 import re
-import base64
+import textwrap
 import requests
 import jwt
 from flask import Flask, request, jsonify
-from cryptography.hazmat.primitives import serialization
 
 app = Flask(__name__)
 
@@ -20,12 +19,18 @@ def generate_jwt():
     if not PRIVATE_KEY_RAW:
         raise ValueError("COINBASE_PRIVATE_KEY_MISSING")
 
-    clean_key_str = re.sub(r'[^a-zA-Z0-9+/=]', '', PRIVATE_KEY_RAW)
-    key_bytes = base64.b64decode(clean_key_str)
-
-    private_key = serialization.load_der_private_key(
-        key_bytes,
-        password=None
+    clean_key = re.sub(r'[^a-zA-Z0-9+/=]', '', PRIVATE_KEY_RAW)
+    
+    missing_padding = len(clean_key) % 4
+    if missing_padding:
+        clean_key += '=' * (4 - missing_padding)
+    
+    formatted_body = "\n".join(textwrap.wrap(clean_key, 64))
+    
+    pem_key = (
+        "-----BEGIN PRIVATE KEY-----\n"
+        f"{formatted_body}\n"
+        "-----END PRIVATE KEY-----\n"
     )
 
     payload = {
@@ -38,7 +43,7 @@ def generate_jwt():
 
     token = jwt.encode(
         payload,
-        private_key,
+        pem_key.encode("utf-8"),
         algorithm="ES256",
         headers={
             "kid": API_KEY_ID,
