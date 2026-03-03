@@ -1,6 +1,7 @@
 import os
 import time
 import re
+import textwrap
 import requests
 import jwt
 from flask import Flask, request, jsonify
@@ -20,9 +21,11 @@ def generate_jwt():
 
     clean_key = re.sub(r'[^a-zA-Z0-9+/=]', '', PRIVATE_KEY_RAW)
     
+    formatted_body = "\n".join(textwrap.wrap(clean_key, 64))
+    
     pem_key = (
         "-----BEGIN PRIVATE KEY-----\n"
-        f"{clean_key}\n"
+        f"{formatted_body}\n"
         "-----END PRIVATE KEY-----"
     )
 
