@@ -1,62 +1,35 @@
 import os
 import time
-import re
 import requests
-import jwt
+import hmac
+import hashlib
+import base64
 from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
 API_KEY_ID = os.getenv("COINBASE_API_KEY_ID")
-PRIVATE_KEY_RAW = os.getenv("COINBASE_PRIVATE_KEY") 
+API_SECRET = os.getenv("COINBASE_API_SECRET")  # REST secret ONLY
 
-BASE_URL = "https://api.coinbase.com"
+BASE_URL = "https://api.coinbase.com/api/v3/brokerage"
 PRODUCT_ID = "SOL-USD"
 TRADE_SIZE_USD = "5"
 
-def generate_jwt():
-    if not PRIVATE_KEY_RAW:
-        raise ValueError("COINBASE_PRIVATE_KEY_MISSING")
 
-    clean_key = re.sub(r'[^a-zA-Z0-9+/=]', '', PRIVATE_KEY_RAW)
-    
-    pem_key = (
-        "-----BEGIN EC PRIVATE KEY-----\n"
-        f"{clean_key}\n"
-        "-----END EC PRIVATE KEY-----\n"
-    )
+def sign_request(timestamp, method, path, body):
+    message = f"{timestamp}{method}{path}{body}"
+    signature = hmac.new(
+        API_SECRET.encode("utf-8"),
+        message.encode("utf-8"),
+        hashlib.sha256
+    ).digest()
+    return base64.b64encode(signature).decode()
 
-    payload = {
-        "sub": API_KEY_ID,
-        "iss": "coinbase-cloud",
-        "nbf": int(time.time()),
-        "exp": int(time.time()) + 120,
-        "aud": ["retail_rest_api_proxy"],
-    }
-
-    token = jwt.encode(
-        payload,
-        pem_key.encode("utf-8"),
-        algorithm="ES256",
-        headers={
-            "kid": API_KEY_ID,
-            "nonce": os.urandom(16).hex(),
-            "typ": "JWT"
-        }
-    )
-    return token
 
 def place_market_buy():
-    url = f"{BASE_URL}/orders"
-    try:
-        token = generate_jwt()
-    except Exception as e:
-        return {"error": f"JWT_FAILED: {str(e)}"}
-
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json"
-    }
+    method = "POST"
+    path = "/orders"
+    url = BASE_URL + path
 
     body = {
         "client_order_id": str(int(time.time())),
@@ -69,8 +42,20 @@ def place_market_buy():
         }
     }
 
-    response = requests.post(url, headers=headers, json=body)
-    
+    body_json = json_body = requests.utils.json.dumps(body)
+    timestamp = str(int(time.time()))
+
+    signature = sign_request(timestamp, method, path, body_json)
+
+    headers = {
+        "CB-ACCESS-KEY": API_KEY_ID,
+        "CB-ACCESS-SIGN": signature,
+        "CB-ACCESS-TIMESTAMP": timestamp,
+        "Content-Type": "application/json"
+    }
+
+    response = requests.post(url, headers=headers, data=body_json)
+
     try:
         return {
             "status_code": response.status_code,
@@ -81,6 +66,7 @@ def place_market_buy():
             "status_code": response.status_code,
             "response": response.text
         }
+
 
 @app.route("/", methods=["POST"])
 def webhook():
@@ -94,6 +80,7 @@ def webhook():
         return jsonify(result)
 
     return jsonify({"status": "ignored", "action": action})
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
