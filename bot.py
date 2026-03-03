@@ -1,59 +1,48 @@
-
-
 import os
 import time
-import base64
 import requests
 import jwt
 from flask import Flask, request, jsonify
 
-
 app = Flask(__name__)
 
+# CONFIGURATION
 API_KEY_ID = os.getenv("COINBASE_API_KEY_ID")
-PRIVATE_KEY_BASE64 = os.getenv("COINBASE_PRIVATE_KEY")
+# This should be the raw string (the one starting with Wek... and ending with ==)
+PRIVATE_KEY_RAW = os.getenv("COINBASE_PRIVATE_KEY")
 
-BASE_URL = "https://api.coinbase.com/api/v3/brokerage"
+BASE_URL = "https://api.coinbase.com"
 PRODUCT_ID = "SOL-USD"
-TRADE_SIZE_USD = "5"  # SAFE TEST SIZE
-
-
-def load_private_key():
-    decoded_key = base64.b64decode(PRIVATE_KEY_BASE64)
-    return serialization.load_der_private_key(
-        decoded_key,
-        password=None
-    )
-
+TRADE_SIZE_USD = "5"
 
 def generate_jwt():
-    # Insert proper line breaks every 64 chars
-    formatted_key = "\n".join(
-        PRIVATE_KEY_BASE64[i:i+64]
-        for i in range(0, len(PRIVATE_KEY_BASE64), 64)
-    )
-
-    pem_key = (
-        "-----BEGIN PRIVATE KEY-----\n"
-        + formatted_key +
-        "\n-----END PRIVATE KEY-----"
-    )
+    """Generates a valid Coinbase CDP JWT token."""
+    # Ensure the key is wrapped correctly for the cryptography library
+    # We use .strip() to catch any accidental spaces from Railway's UI
+    clean_key = PRIVATE_KEY_RAW.strip().replace("\\n", "\n")
+    
+    # If the key doesn't already have headers, add them
+    if "-----BEGIN" not in clean_key:
+        pem_key = f"-----BEGIN PRIVATE KEY-----\n{clean_key}\n-----END PRIVATE KEY-----"
+    else:
+        pem_key = clean_key
 
     payload = {
         "sub": API_KEY_ID,
-        "iss": "cdp",
+        "iss": "coinbase-cloud",
         "nbf": int(time.time()),
         "exp": int(time.time()) + 120,
-        "aud": "https://api.coinbase.com"
+        "aud": ["retail_rest_api_proxy"],
     }
 
+    # PyJWT handles the ASN.1 parsing internally
     token = jwt.encode(
         payload,
         pem_key,
         algorithm="ES256",
         headers={
             "kid": API_KEY_ID,
-            "nonce": str(int(time.time()))
+            "nonce": os.urandom(16).hex() # More secure nonce for 2026
         }
     )
 
@@ -61,7 +50,10 @@ def generate_jwt():
 
 def place_market_buy():
     url = f"{BASE_URL}/orders"
-    token = generate_jwt()
+    try:
+        token = generate_jwt()
+    except Exception as e:
+        return {"error": f"JWT Generation Failed: {str(e)}"}
 
     headers = {
         "Authorization": f"Bearer {token}",
@@ -80,15 +72,14 @@ def place_market_buy():
     }
 
     response = requests.post(url, headers=headers, json=body)
-
     return {
         "status_code": response.status_code,
-        "response": response.text
+        "response": response.json() if response.status_code == 200 else response.text
     }
-
 
 @app.route("/", methods=["POST"])
 def webhook():
+    # force=True handles cases where Content-Type header isn't set to json
     data = request.get_json(force=True)
 
     if not data:
@@ -100,11 +91,15 @@ def webhook():
         result = place_market_buy()
         return jsonify(result)
 
-    return jsonify({"status": "no action"})
+    return jsonify({"status": "no action", "received": action})
 
 if __name__ == "__main__":
+    # Railway provides the PORT environment variable
     port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port)
+
+
+
 
 
 
