@@ -6,27 +6,30 @@ from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
-# CONFIGURATION
+# CONFIGURATION FROM RAILWAY
 API_KEY_ID = os.getenv("COINBASE_API_KEY_ID")
-# This should be the raw string (the one starting with Wek... and ending with ==)
-PRIVATE_KEY_RAW = os.getenv("COINBASE_PRIVATE_KEY")
+PRIVATE_KEY_RAW = os.getenv("COINBASE_PRIVATE_KEY") # The raw string starting with Wek...
 
-BASE_URL = "https://api.coinbase.com"
+BASE_URL = "https://api.api.coinbase.com"
 PRODUCT_ID = "SOL-USD"
 TRADE_SIZE_USD = "5"
 
 def generate_jwt():
-    """Generates a valid Coinbase CDP JWT token."""
-    # Ensure the key is wrapped correctly for the cryptography library
-    # We use .strip() to catch any accidental spaces from Railway's UI
-    clean_key = PRIVATE_KEY_RAW.strip().replace("\\n", "\n")
+    """Generates a Coinbase CDP JWT token with strict 2026 formatting."""
+    if not PRIVATE_KEY_RAW:
+        raise ValueError("COINBASE_PRIVATE_KEY is missing in Railway variables")
+
+    # FIX: The "InvalidByte(0, 92)" error is caused by literal backslashes (\).
+    # This line converts literal "\n" text back into real line breaks.
+    clean_key = PRIVATE_KEY_RAW.replace("\\n", "\n").strip()
     
-    # If the key doesn't already have headers, add them
+    # Ensure the key is wrapped in the PEM headers required by the 'cryptography' library
     if "-----BEGIN" not in clean_key:
         pem_key = f"-----BEGIN PRIVATE KEY-----\n{clean_key}\n-----END PRIVATE KEY-----"
     else:
         pem_key = clean_key
 
+    # 2026 Coinbase CDP Authentication Standards
     payload = {
         "sub": API_KEY_ID,
         "iss": "coinbase-cloud",
@@ -35,17 +38,17 @@ def generate_jwt():
         "aud": ["retail_rest_api_proxy"],
     }
 
-    # PyJWT handles the ASN.1 parsing internally
+    # Generate the Token using ES256 (ECDSA)
     token = jwt.encode(
         payload,
         pem_key,
         algorithm="ES256",
         headers={
             "kid": API_KEY_ID,
-            "nonce": os.urandom(16).hex() # More secure nonce for 2026
+            "nonce": os.urandom(16).hex(),
+            "typ": "JWT"
         }
     )
-
     return token
 
 def place_market_buy():
@@ -72,37 +75,38 @@ def place_market_buy():
     }
 
     response = requests.post(url, headers=headers, json=body)
-    return {
-        "status_code": response.status_code,
-        "response": response.json() if response.status_code == 200 else response.text
-    }
+    
+    # Return detailed response for debugging
+    try:
+        return {
+            "status_code": response.status_code,
+            "response": response.json()
+        }
+    except:
+        return {
+            "status_code": response.status_code,
+            "response": response.text
+        }
 
 @app.route("/", methods=["POST"])
 def webhook():
-    # force=True handles cases where Content-Type header isn't set to json
+    # force=True handles TradingView's default content-type
     data = request.get_json(force=True)
 
     if not data:
         return jsonify({"error": "No JSON received"}), 400
 
+    # TradingView Alert Message: {"action": "LONG"}
     action = data.get("action")
 
     if action == "LONG":
         result = place_market_buy()
         return jsonify(result)
 
-    return jsonify({"status": "no action", "received": action})
+    return jsonify({"status": "ignored", "action_received": action})
 
 if __name__ == "__main__":
-    # Railway provides the PORT environment variable
+    # Railway dynamic port binding
     port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port)
-
-
-
-
-
-
-
-
-
+    
