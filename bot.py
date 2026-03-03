@@ -6,12 +6,13 @@ from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
-API_KEY = os.getenv("COINBASE_API_KEY")
-API_SECRET = os.getenv("COINBASE_API_SECRET")
+API_KEY = os.getenv("9kf6TPvxHNeIFsmIVeyGNMSqddMK5pAW")
+API_SECRET = os.getenv("0b1cc6cf-785f-4e00-bf2a-d24df75f048c")
 
 BASE_URL = "https://api.coinbase.com/api/v3/brokerage"
 PRODUCT_ID = "SOL-USD"
-TRADE_SIZE_USD = 5  # TEST SIZE
+TRADE_SIZE_USD = 5  # SAFE TEST SIZE
+
 
 def generate_jwt():
     payload = {
@@ -22,6 +23,7 @@ def generate_jwt():
         "aud": ["https://api.coinbase.com"]
     }
     return jwt.encode(payload, API_SECRET, algorithm="HS256")
+
 
 def place_market_buy():
     url = f"{BASE_URL}/orders"
@@ -44,9 +46,15 @@ def place_market_buy():
     }
 
     response = requests.post(url, headers=headers, json=body)
+
     print("Status Code:", response.status_code)
-print("Raw Response:", response.text)
-return {"status_code": response.status_code, "response": response.text}
+    print("Raw Response:", response.text)
+
+    return {
+        "status_code": response.status_code,
+        "response": response.text
+    }
+
 
 @app.route("/", methods=["POST"])
 def webhook():
@@ -59,7 +67,7 @@ def webhook():
 
     return jsonify({"status": "no action"})
 
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port)
-
