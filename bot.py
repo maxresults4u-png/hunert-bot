@@ -27,11 +27,16 @@ def load_private_key():
 
 
 def generate_jwt():
-    # Convert base64 key to PEM format
+    # Insert proper line breaks every 64 chars
+    formatted_key = "\n".join(
+        PRIVATE_KEY_BASE64[i:i+64]
+        for i in range(0, len(PRIVATE_KEY_BASE64), 64)
+    )
+
     pem_key = (
         "-----BEGIN PRIVATE KEY-----\n"
-        + PRIVATE_KEY_BASE64
-        + "\n-----END PRIVATE KEY-----"
+        + formatted_key +
+        "\n-----END PRIVATE KEY-----"
     )
 
     payload = {
@@ -53,7 +58,6 @@ def generate_jwt():
     )
 
     return token
-
 
 def place_market_buy():
     url = f"{BASE_URL}/orders"
@@ -98,6 +102,7 @@ def webhook():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port)
+
 
 
 
