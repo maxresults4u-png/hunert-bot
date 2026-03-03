@@ -6,8 +6,7 @@ import base64
 import requests
 import jwt
 from flask import Flask, request, jsonify
-from cryptography.hazmat.primitives.asymmetric import ec
-from cryptography.hazmat.backends import default_backend
+
 
 app = Flask(__name__)
 
@@ -18,7 +17,6 @@ BASE_URL = "https://api.coinbase.com/api/v3/brokerage"
 PRODUCT_ID = "SOL-USD"
 TRADE_SIZE_USD = "5"  # SAFE TEST SIZE
 
-from cryptography.hazmat.primitives import serialization
 
 def load_private_key():
     decoded_key = base64.b64decode(PRIVATE_KEY_BASE64)
@@ -95,5 +93,6 @@ def webhook():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port)
+
 
 
