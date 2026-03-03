@@ -27,7 +27,12 @@ def load_private_key():
 
 
 def generate_jwt():
-    decoded_key = base64.b64decode(PRIVATE_KEY_BASE64)
+    # Convert base64 key to PEM format
+    pem_key = (
+        "-----BEGIN PRIVATE KEY-----\n"
+        + PRIVATE_KEY_BASE64
+        + "\n-----END PRIVATE KEY-----"
+    )
 
     payload = {
         "sub": API_KEY_ID,
@@ -39,7 +44,7 @@ def generate_jwt():
 
     token = jwt.encode(
         payload,
-        decoded_key,
+        pem_key,
         algorithm="ES256",
         headers={
             "kid": API_KEY_ID,
@@ -93,6 +98,7 @@ def webhook():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port)
+
 
 
 
